@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulazione Penetrazione Server con Chart.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #c7c7c7;
+        }
+        h1 {
+            color: #333;
+        }
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        #controls label {
+            margin-right: 5px;
+        }
+        #chartsContainer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 50px;
+        }
+        canvas {
+            background-color: #fff;
+        }
+        button {
+            padding: 5px 15px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h2> Risultato: </h2>
+
+    <div id="controls">
+        <label># of Servers (n): <input type="number" id="n" value="50" min="1"></label><br>
+        <label># of Hackers (m): <input type="number" id="m" value="10" min="1"></label><br>
+        <label>Probability (p): <input type="number" id="p" value="0.4" step="0.01" min="0" max="1"></label><br>
+        <button onclick="runSimulation()">Esegui Simulazione</button><br>
+    </div>
+
+    <div id="chartsContainer">
+        <canvas id="penetrationChart" width="800" height="400"></canvas>
+        <canvas id="histogramChart" width="400" height="400"></canvas>
+    </div>
+
+    
+
+    <script>
+        // instances of both graphs we will use later
+        let penetrationChart = null;
+        let histogramChart = null;
+
+        // array with the list of colors used to draw hackers in the graph
+        let colors = [
+            'rgba(255, 0, 0, 1)',       // Red
+            'rgba(0, 0, 235, 1)',       // Blue
+            'rgba(60, 255, 50, 1)',     // Green
+            'rgba(255, 220, 30, 1)',    // Yellow
+            'rgba(115, 255, 212, 1)',   // aquamarine
+            'rgba(203, 102, 255, 1)',   // purple
+            'rgba(255, 159, 64, 1)',    // orange
+            'rgba(100, 100, 100, 1)',   // gray
+            'rgba(81, 209, 246, 1)',    // soft blue
+        ];
+
+        // function that generates a random color in the rgb format
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for red
+            const g = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for green
+            const b = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for blue
+
+            return `rgb(${r}, ${g}, ${b}, 1)`;          // outputs the result in RGB format
+        }
+
+        // function that simulates the attacks and saves the results
+        function runSimulation() {
+
+            // takes the data from the input fields
+            const n = parseInt(document.getElementById('n').value);
+            const m = parseInt(document.getElementById('m').value);
+            const p = parseFloat(document.getElementById('p').value);
+
+            color = [];
+
+            // Fill the colors array 
+            while(colors.length < m) {
+                newColor = getRandomColor();
+                while(colors.includes(newColor)){
+                    newColor = getRandomColor();
+                }
+                colors.push(newColor);
+            }
+
+            // definition of useful matrix
+            let penetrationHistory = Array.from({ length: m }, () => Array(n).fill(0));
+            let serverStates = Array.from({ length: m }, () => Array(n).fill(0));
+
+            // simulation of the attacks
+            for (let h = 0; h < m; h++) {
+                let cumulative = 0;
+                for (let s = 0; s < n; s++) {
+                    if (Math.random() < p) {
+                        serverStates[h][s] = 1;
+                        cumulative++;
+                    }
+                    penetrationHistory[h][s] = cumulative;
+                }
+            }
+
+            //draws the graphs
+            const histogramData = calculateHistogram(serverStates, n);
+            drawPenetrationChart(penetrationHistory, n, m);
+            drawHistogramChart(histogramData, n);
+        }
+
+        // function that calculates the total results for the Histogram
+        function calculateHistogram(serverStates, n) {
+
+            // Counts the total 
+            let counts = Array(n + 1).fill(0);
+            for (let h = 0; h < serverStates.length; h++) {
+                const total = serverStates[h].reduce((acc, val) => acc + val, 0);
+                counts[total]++;
+            }
+            return counts;
+        }
+
+        // function that draws the penetration graph
+        function drawPenetrationChart(data, n, m) {
+            // creation of labels
+            const labels = Array.from({ length: n }, (_, i) => `Server ${i + 1}`);
+
+            // Creazion of the Dataset
+            const datasets = data.map((history, h) => ({
+                label: `Hacker ${h + 1}`,
+                data: history,
+                borderColor: colors[h % colors.length],
+                fill: false,
+                tension: 0.1
+            }));
+
+            // Reset the old graph
+            if (penetrationChart) {
+                penetrationChart.destroy();
+            }
+
+            // take the HTML element
+            const ctx = document.getElementById('penetrationChart').getContext('2d');
+
+            // Creation of the new graph
+            penetrationChart = new Chart(ctx, {
+                type: 'line',
+                // dataset
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                // label and axes options
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Numero di Server'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Numero di Successi'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // function that draws the histogram
+        function drawHistogramChart(data, n) {
+
+            // Creation of labels and dataset
+            const labels = Array.from({ length: n + 1 }, (_, i) => i);
+            const dataset = {
+                label: 'Numero di Hacker',
+                data: data,
+                backgroundColor: 'rgba(75, 192, 192, 0.7)'
+            };
+
+            // Reset the old graph
+            if (histogramChart) {
+                histogramChart.destroy();
+            }
+
+            // takes the HTML element
+            const ctx = document.getElementById('histogramChart').getContext('2d');
+
+            // creates the new graph
+            histogramChart = new Chart(ctx, {
+                type: 'bar',
+                // dataset
+                data: {
+                    labels: labels,
+                    datasets: [dataset]
+                },
+                // axes options
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Numero di Server Penetrati'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Numero di Hacker'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // command to run the simulation opening the window
+        window.onload = runSimulation;
+    </script>
+</body>
+</html>
+
+
+
