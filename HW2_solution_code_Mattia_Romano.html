@@ -141,11 +141,11 @@
         // function that simulates the attacks and saves the results
         function runSimulation() {
             if (midHistogramChart){
-                midHistogramChart = null;
+                midHistogramChart.destroy();
             }
 
             if (histogramChart){
-                histogramChart = null;
+                histogramChart.destroy();
             }
 
             // Takes data from the input fields
