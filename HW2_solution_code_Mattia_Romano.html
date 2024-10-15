@@ -191,7 +191,7 @@
             const { absolute, relative } = calculateFreq(penetrationHistory);
 
             //draws the graphs
-            const midHistogramData =calculateHistogram(t);
+            const midHistogramData =calculateHistogram(serverStates, t);
             const histogramData = calculateHistogram(serverStates, n);
             drawPenetrationChart(penetrationHistory, absolute, relative, n, m);
 
