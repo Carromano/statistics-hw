@@ -154,6 +154,7 @@
             const t = parseInt(document.getElementById('t').value);
             const p = parseFloat(document.getElementById('p').value);
             
+
             // Fill the colors array if there are less than m colors
             while(colors.length < m) {
                 newColor = getRandomColor();
@@ -193,8 +194,8 @@
             const midHistogramData =calculateHistogram(t);
             const histogramData = calculateHistogram(serverStates, n);
             drawPenetrationChart(penetrationHistory, absolute, relative, n, m);
-            drawHistogramChart(midHistogramData, t);
-            drawHistogramChart(histogramData, n);
+
+            drawHistogramChart(histogramData, midHistogramData, n);
         }
 
 
@@ -320,17 +321,17 @@
 
 
         // function that draws the histogram
-        function drawHistogramChart(data, n) {
+        function drawHistogramChart(data, midData, n) {
 
             // Creation of labels and dataset
             const labels = Array.from({ length: n + 1 }, (_, i) => i);
-            const dataset = {
-                label: 'Numero di Hacker',
-                data: data,
-                backgroundColor: 'rgba(75, 192, 192, 0.7)'
-            };
 
             if (midHistogramChart){
+                const dataset = {
+                    label: 'Numero di Hacker',
+                    data: data,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                };
 
                 // Reset the old graph
                 if (histogramChart) {
@@ -369,6 +370,13 @@
                 });
 
             } else {
+
+                const dataset = {
+                    label: 'Numero di Hacker',
+                    data: midData,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                };
+
                 // Reset the old graph
                 if (midHistogramChart) {
                     midHistogramChart.destroy();
@@ -391,7 +399,7 @@
                             x: {
                                 title: {
                                     display: true,
-                                    text: 'Numero di Server Penetrati'
+                                    text: 'Numero di Server Penetrati a tempo t'
                                 }
                             },
                             y: {
