@@ -452,11 +452,12 @@
         function drawHistogramChart(data, n) {
 
             // Creation of labels and dataset
+            let labels = null;
             // for labels the dimension depends on the random walk
-            if(walk.checked){
-                const labels = Array.from({ length: n + 1 }, (_, i) => i);
+            if(!walk.checked){
+                labels = Array.from({ length: n + 1 }, (_, i) => i);
             } else {
-                const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+                labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
             }
 
             // the dataset is the number of hackers
@@ -513,11 +514,13 @@
         // function that draws the intermediate histogram
         function drawMidHistogramChart(data, n){
 
+            let labels = null;
+
             // for labels the dimension depends on the random walk
-            if(walk.checked){
-                const labels = Array.from({ length: n + 1 }, (_, i) => i);
+            if(!walk.checked){
+                labels = Array.from({ length: n + 1 }, (_, i) => i);
             } else {
-                const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+                labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
             }
 
             // creation of the dataset of all hackers
