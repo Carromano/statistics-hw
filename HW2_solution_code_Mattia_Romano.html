@@ -74,6 +74,7 @@
 
     <div id="chartsContainer">
         <canvas id="penetrationChart" width="800" height="400"></canvas>
+        <canvas id="midHistogramChart" width="400" height="400"></canvas>
         <canvas id="histogramChart" width="400" height="400"></canvas>
     </div>
 
@@ -87,6 +88,7 @@
 
         // instances of both graphs we will use later
         let penetrationChart = null;
+        let midHistogramChart = null;
         let histogramChart = null;
 
         // array with the list of colors used to draw hackers in the graph
@@ -138,6 +140,14 @@
 
         // function that simulates the attacks and saves the results
         function runSimulation() {
+            if (midHistogramChart){
+                midHistogramChart = null;
+            }
+
+            if (histogramChart){
+                histogramChart = null;
+            }
+
             // Takes data from the input fields
             const n = parseInt(document.getElementById('n').value);
             const m = parseInt(document.getElementById('m').value);
@@ -207,7 +217,7 @@
 
             return { absolute: abs, relative: rel };
         }
-
+/*
         // function that calculates the total results for the Histogram
         // function calculateHistogram(serverStates, n) {
 
@@ -220,6 +230,8 @@
         //     return counts;
 
         // }
+
+*/
 
         function calculateHistogram(serverStates, t){
             let counts = Array(n + 1).fill(0);
@@ -305,6 +317,8 @@
             });
         }
 
+
+
         // function that draws the histogram
         function drawHistogramChart(data, n) {
 
@@ -316,41 +330,81 @@
                 backgroundColor: 'rgba(75, 192, 192, 0.7)'
             };
 
-            // Reset the old graph
-            if (histogramChart) {
-                histogramChart.destroy();
-            }
+            if (midHistogramChart){
 
-            // takes the HTML element
-            const ctx = document.getElementById('histogramChart').getContext('2d');
+                // Reset the old graph
+                if (histogramChart) {
+                    histogramChart.destroy();
+                }
 
-            // creates the new graph
-            histogramChart = new Chart(ctx, {
-                type: 'bar',
-                // dataset
-                data: {
-                    labels: labels,
-                    datasets: [dataset]
-                },
-                // axes options
-                options: {
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Numero di Server Penetrati'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Numero di Hacker'
+                // takes the HTML element
+                const ctx = document.getElementById('histogramChart').getContext('2d');
+
+                // creates the new graph
+                histogramChart = new Chart(ctx, {
+                    type: 'bar',
+                    // dataset
+                    data: {
+                        labels: labels,
+                        datasets: [dataset]
+                    },
+                    // axes options
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Server Penetrati'
+                                }
                             },
-                            beginAtZero: true
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Hacker'
+                                },
+                                beginAtZero: true
+                            }
                         }
                     }
+                });
+
+            } else {
+                // Reset the old graph
+                if (midHistogramChart) {
+                    midHistogramChart.destroy();
                 }
-            });
+
+                // takes the HTML element
+                const ctx = document.getElementById('midHistogramChart').getContext('2d');
+
+                // creates the new graph
+                midHistogramChart = new Chart(ctx, {
+                    type: 'bar',
+                    // dataset
+                    data: {
+                        labels: labels,
+                        datasets: [dataset]
+                    },
+                    // axes options
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Server Penetrati'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Hacker'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         // command to run the simulation opening the window
