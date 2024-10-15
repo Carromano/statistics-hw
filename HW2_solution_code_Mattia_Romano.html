@@ -180,8 +180,10 @@
             const { absolute, relative } = calculateFreq(penetrationHistory);
 
             //draws the graphs
+            const midHistogramData =calculateHistogram(t);
             const histogramData = calculateHistogram(serverStates, n);
             drawPenetrationChart(penetrationHistory, absolute, relative, n, m);
+            drawHistogramChart(midHistogramData, t);
             drawHistogramChart(histogramData, n);
         }
 
@@ -207,16 +209,25 @@
         }
 
         // function that calculates the total results for the Histogram
-        function calculateHistogram(serverStates, n) {
+        // function calculateHistogram(serverStates, n) {
 
-            // Counts the total 
+        //     // Counts the total 
+        //     let counts = Array(n + 1).fill(0);
+        //     for (let h = 0; h < serverStates.length; h++) {
+        //         const total = serverStates[h].reduce((acc, val) => acc + val, 0);
+        //         counts[total]++;
+        //     }
+        //     return counts;
+
+        // }
+
+        function calculateHistogram(serverStates, t){
             let counts = Array(n + 1).fill(0);
+            
             for (let h = 0; h < serverStates.length; h++) {
-                const total = serverStates[h].reduce((acc, val) => acc + val, 0);
+                const total = serverStates[h].slice(0, t).reduce((acc, val) => acc + val>0?val:0, 0);
                 counts[total]++;
             }
-            return counts;
-
         }
 
         // function that draws the penetration graph
