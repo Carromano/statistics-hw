@@ -65,6 +65,7 @@
 <body>
     <h2> Risultato: </h2>
 
+    <!-- inputs and controls -->
     <div id="controls">
         <label># of Servers (n): <input type="number" id="n" value="10" min="1"></label><br>
         <label># of Hackers (m): <input type="number" id="m" value="5" min="1"></label><br>
@@ -72,8 +73,11 @@
         <label>Time (t): <input type="number" id="t" value="5" step="1" min="1"></label><br>
         <button id="simulateButton" onclick="runSimulation()">Esegui Simulazione</button><br>
         <p id="errorMessage" class="error-message">Errore: Il tempo (t) deve essere minore o uguale al numero di server (n).</p>
+        <label>Random Walk: <input type="checkbox" id="walk" checked></label>
+        
     </div>
 
+    <!-- graphs -->
     <div id="chartsContainer">
         <canvas id="penetrationChart" width="80%"></canvas><br>
 
@@ -98,16 +102,16 @@
         ***************************/
 
         // instances of n, t inputs, simulation button and error message to avoid t > n.
-        const nInput = document.getElementById('n');
-        const tInput = document.getElementById('t');
-        const simulationButton = document.getElementById('simulateButton');
-        const errorMessage = document.getElementById('errorMessage');
+        const nInput = document.getElementById('n');                        // input for the number of servers
+        const tInput = document.getElementById('t');                        // input for the time
+        const simulationButton = document.getElementById('simulateButton'); // button to run the simulation
+        const errorMessage = document.getElementById('errorMessage');       // error message to show if t > n
+        const walk = document.getElementById("walk");                       // checkbox for the random walk
 
         // instances of all graphs we will use later.
-        let penetrationChart = null;
-        let midHistogramChart = null;
-        let histogramChart = null;
-        
+        let penetrationChart = null;                // penetration chart
+        let midHistogramChart = null;               // intermediate histogram chart
+        let histogramChart = null;                  // final histogram chart
 
 
         /*************************** 
@@ -123,7 +127,7 @@
             'rgba(81, 209, 246, 1)',    // soft blue
         ];
 
-        // colors used for frequencies.
+        // colors used for abs and rel frequency, mean and variance.
         let mainColors = [
             'rgba(255, 0, 0, 1)',       // Red
             'rgba(60, 255, 50, 1)',     // Green
@@ -181,16 +185,19 @@
             const t = parseInt(document.getElementById('t').value);
             const p = parseFloat(document.getElementById('p').value);
 
-            // I set the labels above the first histogram with the correct time (inserted by the user)
+            // set the label above the first histogram with the correct time value (inserted by the user)
             const time = document.getElementById("serverT");
             time.text = t;
             
             // Fill the colors array if there are less than m colors
             while(colors.length < m) {
                 newColor = getRandomColor();
+                
+                // we insert only new colors
                 while(colors.includes(newColor) || mainColors.includes(newColor)){
                     newColor = getRandomColor();
                 }
+
                 colors.push(newColor);
             }
 
@@ -198,54 +205,59 @@
             let penetrationHistory = Array.from({ length: m }, () => Array(n).fill(0));
             let serverStates = Array.from({ length: m }, () => Array(n).fill(0));
 
-            // elements for Welford's algorithm for mean and variance.
-            let count = 0;
-            let mu = 0;
-            let M2 = 0;
-
-            // mean and variance for every server just to draw it on the graph
+            // mean and variance for every server, used to draw then on the graph
             let means = Array(n).fill(0); 
             let vars = Array(n).fill(0) ;
           
-            // simulation of the attacks
+            // simulation of the attacks, cycle on the hackers
             for (let h = 0; h < m; h++) {
-                console.log("------------HACKER ", h, "--------------");
+
+                // cumulative number of servers broken by the hacker, affected negatively by random walk
                 let cumulative = 0;
-                count = 0;
+
+                // elements for Welford's algorithm for mean and variance.
+                let count = 0;
+                let mu = 0;
+                let M2 = 0;
+
+                // cycle on every server
                 for (let s = 0; s < n; s++) {
 
+                    // support variable for the result of the attack
                     let result = null;
 
-                    //-1/+1 jumps with probability p (A)
+                    // jump with probability p and stays still otherwise, when random walk is not active.
+                    //-1/+1 jumps with probability p if random walk is active (A.)
                     if (Math.random() < p) {
                         result = 1;
                         cumulative++;
                     } else {
-                        result = -1;
-                        cumulative--;
+                        // choosing if we'll use the random walk or not
+                        if(walk.checked){
+                            result = -1;
+                            cumulative--;
+                        } else {
+                            result = 0;
+                        }
                     }
 
+                    // saving the results in the matrix
                     serverStates[h][s] = result;
                     penetrationHistory[h][s] = cumulative;
 
                     // Welford algorithm for mean and variance
-                    count++;
-
-                    let difference = result - mu;
-
-                    mu = mu + difference/count;
-
-                    let diff2 = result - mu;
-
-                    M2 = M2 + difference * diff2;
-
+                    count++;                        // increment the count
+                    let difference = result - mu;   // calculate the difference (delta)
+                    mu = mu + difference/count;     // calculate the new mean (mu)
+                    let diff2 = result - mu;        // calculate the new difference (delta2)
+                    M2 = M2 + difference * diff2;   // calculate M2
+                    
+                    // finally calculate the variance from step #2 
                     let variance = (count<2)? 0 : (M2)/(count-1);
                     
                     // Update values for the graphs
                     means[s] = mu;
                     vars[s] = variance;
-
-                    console.log("vars: ", vars);
                 }
             }
 
@@ -272,7 +284,7 @@
             CALCULATING FREQUENCIES AND THE DATA FOR THE HISTOGRAM
         **************************************/
 
-        // function that calculates the mean at time T and at the end of the simulation
+        // function that updates the mean value above the histograms
         function updateMeans(means, t, n){
             
             // take the web references
@@ -286,7 +298,7 @@
             return meanf; 
         }
 
-        // function that calculates the variance at time T and at the end of the simulation
+        // function that updates the variance value above the histograms
         function updateVars(vars, t, n){
 
             // take the web references
@@ -338,12 +350,12 @@
             DRAWING THE CHARTS
         *************************/
 
-        // function that draws the penetration graph
+        // function that draws the penetration graph, modified to support frequency, mean and variance drawings
         function drawPenetrationChart(data, abs, rel, mean, vars, n, m) {
             // creation of labels
             const labels = Array.from({ length: n }, (_, i) => `Server ${i + 1}`);
 
-            // Creazion of the Dataset
+            // Creazion of the Dataset for every hacker
             const datasets = data.map((history, h) => ({
                 label: `Hacker ${h + 1}`,
                 data: history,
@@ -353,6 +365,7 @@
                 order: 5
             }));
 
+            // Creation of the Dataset for the Absolute and Relative Frequency
             const absFreq = {
                 label: 'Absolute Frequence',
                 data: abs,
@@ -373,6 +386,7 @@
                 order:2
             };
 
+            // Creation of the Dataset for the Mean and the Variance
             const meanData = {
                 label: 'Mean',
                 data: mean,
@@ -393,6 +407,7 @@
                 order:3
             }
 
+            // Combining all the datasets in a single array
             const allDatasets = [...datasets, absFreq, relFreq, meanData, varData];
 
 
@@ -433,12 +448,18 @@
             });
         }
 
-        // function that draws the histogram
+        // function that draws the final histogram
         function drawHistogramChart(data, n) {
 
             // Creation of labels and dataset
-            // const labels = Array.from({ length: n + 1 }, (_, i) => i);
-            const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+            // for labels the dimension depends on the random walk
+            if(walk.checked){
+                const labels = Array.from({ length: n + 1 }, (_, i) => i);
+            } else {
+                const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+            }
+
+            // the dataset is the number of hackers
             const dataset = {
                 label: 'Numero di Hacker',
                 data: data,
@@ -492,8 +513,14 @@
         // function that draws the intermediate histogram
         function drawMidHistogramChart(data, n){
 
-            const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+            // for labels the dimension depends on the random walk
+            if(walk.checked){
+                const labels = Array.from({ length: n + 1 }, (_, i) => i);
+            } else {
+                const labels = Array.from({ length: 2 * n + 1 }, (_, i) => i - n);
+            }
 
+            // creation of the dataset of all hackers
             const dataset = {
                 label: 'Numero di Hacker',
                 data: data,
