@@ -52,9 +52,9 @@
     <h2> Risultato: </h2>
 
     <div id="controls">
-        <label># of Servers (n): <input type="number" id="n" value="20" min="1"></label><br>
-        <label># of Hackers (m): <input type="number" id="m" value="10" min="1"></label><br>
-        <label>Lambda (Rate of Attacks): <input type="number" id="lambda" value="5" step="1" min="0"></label><br>
+        <label># of Servers (n): <input type="number" id="n" value="200" min="1"></label><br>
+        <label># of Hackers (m): <input type="number" id="m" value="20" min="1"></label><br>
+        <label>Lambda (Rate of Attacks): <input type="number" id="lambda" value="50" step="1" min="0"></label><br>
         <button onclick="runSimulation()">Esegui Simulazione</button><br>
     </div>
 
@@ -214,13 +214,13 @@
                         x: {
                             title: {
                                 display: true,
-                                text: 'Numero di Server'
+                                text: 'Time'
                             }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: 'Numero di Successi'
+                                text: 'Number of Successful Attacks'
                             },
                             beginAtZero: true
                         }
