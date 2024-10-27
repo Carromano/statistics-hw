@@ -54,7 +54,7 @@
     <div id="controls">
         <label># of Servers (n): <input type="number" id="n" value="200" min="1"></label><br>
         <label># of Hackers (m): <input type="number" id="m" value="20" min="1"></label><br>
-        <label>Lambda (Rate of Attacks): <input type="number" id="lambda" value="50" step="1" min="0"></label><br>
+        <label>Lambda (Rate of Attacks): <input type="number" id="lambda" value="100" step="1" min="0"></label><br>
         <button onclick="runSimulation()">Esegui Simulazione</button><br>
     </div>
 
@@ -168,14 +168,30 @@
             CALCULATING DATA FOR THE HISTOGRAM
         **************************************/
 
-        // function that calculates the total results for the Histogram
+        // function that calculates the final results for the Histogram
         function calculateHistogram(serverStates, n) {
-            let counts = Array(n + 1).fill(0);
+
+            let countsDict = {};
+
             for (let h = 0; h < serverStates.length; h++) {
-                const total = serverStates[h].reduce((acc, val) => acc + val, 0);
-                counts[total]++;
+                let element = 0;
+                for (let s = 0; s < n; s++) {
+                    element += serverStates[h][s];
+                }
+                element = element.toFixed(2); // rounding to 2 decimal places for consistency
+                if (countsDict[element]) {
+                    countsDict[element]++;
+                } else {
+                    countsDict[element] = 1;
+                }
             }
-            return counts;
+            
+            // ordina il dizionario
+            countsDict = Object.fromEntries(
+                Object.entries(countsDict).sort((a, b) => a[0] - b[0])
+            );
+
+            return countsDict;
         }
 
 
@@ -195,7 +211,8 @@
                 data: history,
                 borderColor: colors[h % colors.length],
                 fill: false,
-                tension: 0.1
+                tension: 0.1,
+                pointRadius: 0
             }));
 
             // Reset the old graph
@@ -237,25 +254,12 @@
         }
 
         // function that draws the final histogram
-        function drawHistogramChart(data, n) {
-
-            /* POSSIBILE INNOVAZIONE DELLE ETICHETTE DELL'ISTOGRAMMA
-
-                // Trova il minimo e il massimo di data
-                const min = Math.min(...data);
-                const max = Math.max(...data);
-
-                // Crea le etichette con un passo di 0.1
-                const labels = [];
-                for (let i = min; i <= max; i += 0.1) {
-                    labels.push(i.toFixed(1)); // Arrotonda a un decimale
-                }
-
-            */
+        function drawHistogramChart(dataMap, n) {
 
             // Creation of labels and dataset
+            const labels = Object.keys(dataMap);
+            const data = Object.values(dataMap);
                 // capire come centrare in zero.    
-            const labels = Array.from({ length: data.length}, (_, i) => i - data.length/2);
 
             const dataset = {
                 label: '# of Hackers',
