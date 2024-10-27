@@ -59,8 +59,8 @@
     </div>
 
     <div id="chartsContainer">
-        <canvas id="penetrationChart" width="800" height="400"></canvas>
-        <canvas id="histogramChart" width="400" height="400"></canvas>
+        <canvas id="penetrationChart" width="80%"></canvas>
+        <canvas id="histogramChart" width="auto" height="100"></canvas>
     </div>
 
     <script>
@@ -83,10 +83,6 @@
             'rgba(255, 159, 64, 1)',    // orange
             'rgba(100, 100, 100, 1)',   // gray
             'rgba(81, 209, 246, 1)',    // soft blue
-        ];
-
-        // colors used for abs and rel frequency, mean and variance.
-        let mainColors = [
         ];
 
         // function that generates a random color in the rgb format
@@ -116,7 +112,7 @@
                 newColor = getRandomColor();
                 
                 // we insert only new colors
-                while(colors.includes(newColor) || mainColors.includes(newColor)){
+                while(colors.includes(newColor)){
                     newColor = getRandomColor();
                 }
 
@@ -125,7 +121,7 @@
 
             // definition of useful matrix
             let penetrationHistory = Array.from({ length: m }, () => Array(n).fill(0));
-            let serverStates = Array.from({ length: m }, () => Array(n).fill(0));
+            let totalSuccesses = Array.from({ length: m }, () => Array(n).fill(0));
 
             // simulation of the attacks, cycle on the hackers
             for (let h = 0; h < m; h++) {
@@ -133,20 +129,15 @@
                 // cumulative number of servers broken by the hacker, affected negatively by random walk
                 let cumulative = 0;
 
-                // cycle on every server
+                // cycle on every temporal fraction
                 for (let t = 0; t < n; t++) {
 
                     // jump with probability p = lambda * dt and stays still otherwise.
-                    let attackOccurred = Math.random() < lambda * dt;
-
-                    if (attackOccurred) {
-
-                        serverStates[h][t] = Math.sqrt(dt);
+                    if (Math.random() < lambda * dt) {
+                        totalSuccesses[h][t] = Math.sqrt(dt);
                         cumulative += Math.sqrt(dt);
-
                     } else {
-
-                        serverStates[h][t] = -Math.sqrt(dt);
+                        totalSuccesses[h][t] = -Math.sqrt(dt);
                         cumulative -= Math.sqrt(dt);
                     }
 
@@ -156,7 +147,7 @@
             }
 
             // calculating datas for the histogram
-            const histogramData = calculateHistogram(serverStates, n);
+            const histogramData = calculateHistogram(totalSuccesses, n);
 
             // drawing the histogram and the penetration chart.
             drawPenetrationChart(penetrationHistory, n, m);
@@ -169,14 +160,14 @@
         **************************************/
 
         // function that calculates the final results for the Histogram
-        function calculateHistogram(serverStates, n) {
+        function calculateHistogram(totalSuccesses, n) {
 
             let countsDict = {};
 
-            for (let h = 0; h < serverStates.length; h++) {
+            for (let h = 0; h < totalSuccesses.length; h++) {
                 let element = 0;
                 for (let s = 0; s < n; s++) {
-                    element += serverStates[h][s];
+                    element += totalSuccesses[h][s];
                 }
                 element = element.toFixed(2); // rounding to 2 decimal places for consistency
                 if (countsDict[element]) {
