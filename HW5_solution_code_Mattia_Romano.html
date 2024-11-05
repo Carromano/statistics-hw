@@ -1,8 +1,355 @@
-<html>
-  <head>
-    
-  </head>
-  <body>
-    Hey, this is Carro Site
-  </body>
+<!DOCTYPE html>
+<html lang="it">
+    <head>
+        <meta charset="UTF-8">
+        <title>Different SDEs</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                margin: 20px;
+                background-color: #c7c7c7;
+            }
+            h1 {
+                color: #333;
+            }
+            #controls {
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            #controls label {
+                margin-right: 5px;
+            }
+            #chartsContainer {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 20px;
+                margin: 50px;
+            }
+            canvas {
+                background-color: #fff;
+            }
+            button {
+                padding: 5px 15px;
+                cursor: pointer;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+        </style>
+    </head>
+    <body>
+        
+        <!-- radio buttons used to choose the SDE to use -->
+        <h2>Select the Equation:</h2>
+        <div id="controls">
+            <label><input type="radio" name="simulationType" value="type1" onclick="runSimulation()"> Bernoulli</label>
+            <label><input type="radio" name="simulationType" value="type2" onclick="runSimulation()"> Random Walk</label>
+            <label><input type="radio" name="simulationType" value="type3" onclick="runSimulation()"> Poisson</label>
+            <label><input type="radio" name="simulationType" value="type4" onclick="runSimulation()"> Continuous-Time Random Walk</label>
+        </div>
+
+        <!-- input fields to change datas between simulations -->
+        <h2> Input Data</h2>
+        <div>
+            <label> n: <input type="number" id="n" value="200" min="1"></label><br>
+            <label> m: <input type="number" id="m" value="20" min="1"></label><br>
+            <label> p / lambda: <input type="number" id="lambda" value="100" step="1" min="0"></label><br>
+            <button id="simulateButton" onclick="runSimulation()">Esegui Simulazione</button><br>
+        </div>
+
+        <!-- canvas where the charts will be drawn -->
+        <div id="chartsContainer">
+            <canvas id="penetrationChart" width="800" height="400"></canvas>
+            <canvas id="midHisto" width="auto" height="100"></canvas>
+            <canvas id="histo" width="auto" height="100"></canvas>
+        </div>
+
+        <script>
+
+            // variables to store the charts
+            let penetrationChart = null;
+            let midHistogramChart = null;
+            let histogramChart = null;
+
+            // array with the list of colors used to draw hackers in the graph.
+            let colors = [
+                'rgba(255, 0, 0, 1)',       // Red
+                'rgba(60, 255, 50, 1)',     // Green
+                'rgba(0, 0, 235, 1)',       // Blue    
+                'rgba(255, 220, 30, 1)',    // Yellow
+                'rgba(115, 255, 212, 1)',   // aquamarine
+                'rgba(203, 102, 255, 1)',   // purple
+                'rgba(255, 159, 64, 1)',    // orange
+                'rgba(100, 100, 100, 1)',   // gray
+                'rgba(81, 209, 246, 1)',    // soft blue
+            ];
+
+            // function that generates a random color in the rgb format
+            function getRandomColor() {
+                const r = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for red
+                const g = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for green
+                const b = Math.floor(Math.random() * 256);  // generates a random value from 0 to 255 for blue
+
+                return `rgb(${r}, ${g}, ${b}, 1)`;          // outputs the result in RGB format
+            }
+
+            // function that runs the simulation
+            function runSimulation() {
+
+                // saves the value of the selected radio button
+                const simulationType = document.querySelector('input[name="simulationType"]:checked')?.value;
+
+                // gets the values from the input fields
+                const n = parseInt(document.getElementById('n').value);
+                const m = parseInt(document.getElementById('m').value);
+                const lambda = parseFloat(document.getElementById('lambda').value);
+                // calculate the time step
+                const dt = 1 / n;
+
+                // defining the time in the middle of the simulation to have a first lookup
+                const t = Math.floor(n / 2);
+
+                // Fill the colors array if there are less than m colors
+                while(colors.length < m) {
+                    newColor = getRandomColor();
+                    
+                    // we insert only new colors
+                    while(colors.includes(newColor)){
+                        newColor = getRandomColor();
+                    }
+
+                    colors.push(newColor);
+                }
+
+                // arrays to store the penetration history and the total number of successes
+                let penetrationHistory = Array.from({ length: m }, () => Array(n).fill(0));
+                let totalSuccesses = Array.from({ length: m }, () => Array(n).fill(0));
+
+                // core of the simulation, different in base of the selected radio button
+                switch(simulationType) {
+                    // bernoulli
+                    case 'type1':
+                        for (let h = 0; h < m; h++) {
+                            let cumulative = 0;
+                            for (let t = 0; t < n; t++) {
+                                if (Math.random() < lambda * dt) {
+                                    totalSuccesses[h][t] = 1;
+                                    cumulative++;
+                                }
+                                penetrationHistory[h][t] = cumulative;
+                            }
+                        }
+                        break;
+
+                    // random walk
+                    case 'type2':
+                        for (let h = 0; h < m; h++) {
+                            let cumulative = 0;
+                            for (let t = 0; t < n; t++) {
+                                if (Math.random() < lambda * dt) {
+                                    result = 1;
+                                    cumulative++;
+                                } else {
+                                    result = -1;
+                                    cumulative--;
+                                }
+                                totalSuccesses[h][t] = result;
+                                penetrationHistory[h][t] = cumulative;
+                            }
+                        }
+                        break;
+
+                    // poisson
+                    case 'type3':
+                        for (let h = 0; h < m; h++) {
+                            let cumulative = 0;
+                            for (let t = 0; t < n; t++) {
+                                if(Math.random() < lambda * dt) {
+                                    totalSuccesses[h][t] = 1;
+                                    cumulative++;
+                                }
+                                penetrationHistory[h][t] = cumulative;
+                            }
+                        }
+                        break;
+
+                    // continuous-time random walk
+                    case 'type4':
+                        for (let h = 0; h < m; h++) {
+                            let cumulative = 0;
+                            for (let t = 0; t < n; t++) {
+                                // jump with probability p = lambda * dt and stays still otherwise.
+                                if (Math.random() < lambda * dt) {
+                                    totalSuccesses[h][t] = Math.sqrt(dt);
+                                    cumulative += Math.sqrt(dt);
+                                } else {
+                                    totalSuccesses[h][t] = -Math.sqrt(dt);
+                                    cumulative -= Math.sqrt(dt);
+                                }
+
+                                // updating the cumulative number of successes of the hacker.
+                                penetrationHistory[h][t] = cumulative;
+                            }
+                        }
+                        break;
+
+                    // default switch in case of errors
+                    default:
+                        alert("Select one of the simulation types");
+                        return;
+                }
+
+                // calculating the histogram datas
+                const midHistogramData =calculateHistogram(totalSuccesses, t);
+                const histogramData = calculateHistogram(totalSuccesses, n);
+
+                // drawing the charts
+                drawLineChart(penetrationHistory, n, m);
+                drawMidHistogram(midHistogramData, 'Mid Histogram');
+                drawHistogram(histogramData, 'Final Histogram');
+            }
+
+            // function that calculates the total results for the Histogram
+            function calculateHistogram(totalSuccesses, n) {
+                
+                // dictionary that will contain the values of the graph (result - number of hackers)
+                let countsDict = {};
+
+                // cycle on the hackers
+                for (let h = 0; h < totalSuccesses.length; h++) {
+                    let element = 0;
+                    for (let s = 0; s < n; s++) {
+                        element += totalSuccesses[h][s];
+                    }
+                    element = element.toFixed(2); // rounding to 2 decimal places for consistency
+                    if (countsDict[element]) {
+                        countsDict[element]++;
+                    } else {
+                        countsDict[element] = 1;
+                    }
+                }
+
+                // order the dictionary by key
+                countsDict = Object.fromEntries(
+                    Object.entries(countsDict).sort((a, b) => a[0] - b[0])
+                );
+
+                return countsDict;
+            }
+            
+            // function that draws the penetration chart
+            function drawLineChart(data, n, m) {
+
+                // destroy the previous chart if it exists
+                if (penetrationChart) penetrationChart.destroy();
+            
+                // definition of the labels and the datasets
+                const labels = Array.from({ length: n }, (_, i) => `${i + 1}`);
+                const datasets = data.map((history, h) => ({
+                    label: `Hacker ${h + 1}`,
+                    data: history,
+                    borderColor: colors[h % colors.length],
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0
+                }));
+
+                // take the simulation type selected to adjust labels
+                const simulationType = document.querySelector('input[name="simulationType"]:checked')?.value;
+
+                // take the HTML element
+                const ctx = document.getElementById('penetrationChart').getContext('2d');
+
+                // Draw the new graph
+                penetrationChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        scales: {
+                                x: { title: { display: true, text: (simulationType == "type1" || simulationType == "type2")?'Servers':"Time" } },
+                                y: { title: { display: true, text: 'Number of Successful Attacks' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // function that draws the mid histogram
+            function drawHistogram(dataMap, label) {
+
+                // destroy the previous chart if it exists
+                if (histogramChart) histogramChart.destroy();
+
+                // definition of the labels and the datasets
+                const labels = Object.keys(dataMap);
+                const data = Object.values(dataMap);
+
+                // take the HTML element
+                const ctx = document.getElementById('histo').getContext('2d');
+        
+                // Draw the new graph
+                histogramChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label,
+                            data,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: { title: { display: true, text: 'Number of Successes' } },
+                            y: { title: { display: true, text: 'Number of Hackers' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // function that draws the mid histogram
+            function drawMidHistogram(dataMap, label) {
+
+                // destroy the previous chart if it exists
+                if (midHistogramChart) midHistogramChart.destroy();
+
+                // definition of the labels and the datasets
+                const labels = Object.keys(dataMap);
+                const data = Object.values(dataMap);
+
+                // take the HTML element
+                const ctx = document.getElementById('midHisto').getContext('2d');
+        
+                // Draw the new graph
+                midHistogramChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label,
+                            data,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: { title: { display: true, text: 'Number of Successes' } },
+                            y: { title: { display: true, text: 'Number of Hackers' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+            
+        </script>
+    </body>
 </html>
