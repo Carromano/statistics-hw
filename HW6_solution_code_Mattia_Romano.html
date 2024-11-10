@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Empirical vs Theoretical Distribution</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            canvas {
+                width: 600px!important;
+                height: auto;
+                margin: 20px auto;
+            }
+
+            .results {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            #meanVarianceDisplay {
+                font-size: 16px;
+                line-height: 1.8;
+                font-weight: bold;
+                margin-top: 20px;
+                text-align: center;
+                display: inline-block;
+                padding: 15px;
+                border: 2px solid #ddd;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+
+            .value-row {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 10px;
+            }
+
+            .value-item {
+                margin: 0 20px;
+            }
+
+            .probability{
+                margin: 10px 10px;
+            }
+
+            .probabilities-container {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            .probability-label {
+                display: inline-block;
+                width: 60px;
+                text-align: center;
+            }
+
+            .probability-input {
+                width: 60px;
+                margin: 5px;
+                text-align: center;
+            }
+
+            .label-container {
+                margin-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1 style="text-align: center;">Empirical Distribution Convergence</h1>
+
+        <div style="text-align: center;">
+            <!-- select the number of samples -->
+            <label for="sampleSize">Sample Size:</label>
+            <input type="number" id="sampleSize" value="100" min="1" step="1"><br><br>
+
+            <!-- select the number of values -->
+            <label for="numValues">Number of Values:</label>
+            <input type="number" id="numValues" value="3" min="1" step="1">
+
+            <!-- select the probability for every value to get extracted -->
+            <div class="probabilities-container" id="probabilitiesContainer">
+                <div class="label-container">
+                    <label class="probability-label">p0</label>
+                    <input type="number" class="probability-input" value="0.2" min="0" max="1" step="0.01" id="prob_0">
+                </div>
+                <div class="label-container">
+                    <label class="probability-label">p1</label>
+                    <input type="number" class="probability-input" value="0.5" min="0" max="1" step="0.01" id="prob_1">
+                </div>
+                <div class="label-container">
+                    <label class="probability-label">p2</label>
+                    <input type="number" class="probability-input" value="0.3" min="0" max="1" step="0.01" id="prob_2">
+                </div>
+
+            </div>
+
+            <!-- button to generate samples -->
+            <button id="generate">Generate Samples</button>
+        </div>
+
+        <!-- container for charts -->
+        <div id="chartContainer">
+            <canvas id="distributionChart"></canvas>
+        </div>
+
+        <!-- container for values of mean and variance-->
+        <div class="results">
+            <h3>Calculated Mean and Variance:</h3>
+            <div id="meanVarianceDisplay">
+                Theoretical and Empirical Mean and Variance will appear here.
+            </div>
+        </div>
+
+        <script>
+
+            // containers for canvas of distribution
+            distr = null;
+
+            // Define values and probabilities array
+            let values = [];
+            let probabilities = [];
+
+            // add a listener on the values number, in order to add a listener for every value added to the array
+            document.getElementById('numValues').addEventListener('change', function() {
+                let n = document.getElementById('numValues').value;
+                let probArray = document.getElementsByClassName('probabilities-container')[0];
+                probArray.innerHTML = '';  // Clear previous probabilities inputs
+
+                // Create new input fields for each probability and label them p_1, p_2, etc.
+                for (let i = 0; i < n; i++) {
+                    // create the container
+                    let labelContainer = document.createElement('div');
+                    labelContainer.className = 'label-container';
+
+                    // create the label and input
+                    let label = document.createElement('label');
+                    label.className = 'probability-label';
+                    label.textContent = `p${i}`;
+
+                    // create the input field
+                    let input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'probability-input';
+                    input.value = '0.2';
+                    input.min = '0';
+                    input.max = '1';
+                    input.step = '0.01';
+                    input.id = `prob_${i}`;
+
+                    // append the label and input to the container
+                    labelContainer.appendChild(label);
+                    labelContainer.appendChild(input);
+
+                    // append the container to the probabilities container
+                    probArray.appendChild(labelContainer);
+                }
+            });
+
+            // listener for the generate button
+            document.getElementById('generate').addEventListener('click', function() {
+
+                // take the number of values
+                let n = document.getElementById('numValues').value;
+                let probArray = document.getElementsByClassName('probabilities-container')[0];
+
+                // check if the sum of probabilities is 1
+                let sum = 0;
+                for (let i = 0; i < n; i++) {
+                    sum += parseFloat(probArray.children[i].children[1].value); // Get value from input
+                }
+                if (sum != 1) {
+                    alert("The sum of probabilities must be 1");
+                    return;
+                }
+
+                // reset values and probabilities
+                values = [];
+                probabilities = [];           
+
+                // populate values and probabilities
+                for (let i = 0; i < n; i++) {
+                    values.push(i);
+                    probabilities.push(parseFloat(probArray.children[i].children[1].value));
+                }
+
+                // reset the canvas
+                if(distr) distr.destroy();
+
+                // takes the number of samples requested and generates them
+                const sampleSize = parseInt(document.getElementById('sampleSize').value);
+                generateSamples(sampleSize);
+            });
+
+
+            // function to generate samples
+            function generateSamples(sampleSize) {
+                    
+                // arrays for samples and empirical counts
+                const samples = [];
+                const empiricalCounts = Array(values.length).fill(0);
+
+                // create values for mean and variance with Welford's algorithm
+                let mean = 0;
+                let M2 = 0; // For variance calculation using Welford's algorithm
+
+                // loop for the number of samples
+                for (let i = 0; i < sampleSize; i++) {
+                    // Generate a random sample based on the defined probabilities
+                    const sample = drawSample();
+                    samples.push(sample);
+
+                    // Update empirical counts
+                    empiricalCounts[sample]++;
+
+                    // Welford's algorithm for empirical mean and variance
+                    const delta = sample - mean;
+                    mean += delta / (i + 1);
+                    const delta2 = sample - mean;
+                    M2 += delta * delta2;
+                }
+
+                // calculate useful values for the chart
+                const empiricalProbabilities = empiricalCounts.map(count => count / sampleSize);
+                const empiricalVariance = M2 / sampleSize;
+
+                // plot the distribution and show mean and variance
+                plotDistribution(empiricalProbabilities, sampleSize);
+                displayMeanVariance(mean, empiricalVariance);
+            }
+
+            // function to extract a sample
+            function drawSample() {
+                // take a random number
+                const rand = Math.random();
+
+                // calculate the value extracted using cumulative probabilities:
+                //  if there are 3 values and probabilities are [0.2, 0.5, 0.3]
+                //  the cumulative probabilities are [0.2, 0.7, 1] and the intervals are [0, 0.2], [0.2, 0.7), [0.7, 1]
+                let cumulativeProbability = 0;
+                for (let i = 0; i < probabilities.length; i++) {
+                    cumulativeProbability += probabilities[i];
+                    if (rand < cumulativeProbability) {
+                        return values[i];
+                    }
+                }
+
+                return values[values.length - 1];
+            }
+
+            // function to plot the distribution
+            function plotDistribution(empiricalProbabilities, sampleSize) {
+                // get context of the canvas, create labels and datasets for the chart
+                const ctx = document.getElementById('distributionChart').getContext('2d');
+                const labels = values.map(value => `p${value}`);
+                const theoreticalProbabilities = probabilities;
+
+                // create the new chart
+                distr = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        // 2 datasets, one for empirical and one for theoretical probabilities
+                        datasets: [
+                            {
+                                label: 'Empirical Probabilities',
+                                data: empiricalProbabilities,
+                                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            },
+                            {
+                                label: 'Theoretical Probabilities',
+                                data: theoreticalProbabilities,
+                                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                            }
+                        ]
+                    },
+                    // options for the axes and the legend
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: (value) => (value * 100).toFixed(0) + '%'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // function to display mean and variance
+            function displayMeanVariance(empiricalMean, empiricalVariance) {
+                    
+                // calculate theoretical mean and variance
+                const theoreticalMean = probabilities.reduce((sum, p, i) => sum + p * values[i], 0);
+                const theoreticalVariance = probabilities.reduce((sum, p, i) => sum + p * Math.pow(values[i] - theoreticalMean, 2), 0);
+                    
+                // display the values
+                const meanVarianceDisplay = document.getElementById('meanVarianceDisplay');
+                meanVarianceDisplay.innerHTML = `
+                    <div class="value-row">
+                        <div class="value-item"><strong>Theoretical Mean:</strong> ${theoreticalMean.toFixed(2)}</div>
+                        <div class="value-item"><strong>Empirical Mean:</strong> ${empiricalMean.toFixed(2)}</div>
+                    </div>
+                    <div class="value-row">
+                        <div class="value-item"><strong>Theoretical Variance:</strong> ${theoreticalVariance.toFixed(2)}</div>
+                        <div class="value-item"><strong>Empirical Variance:</strong> ${empiricalVariance.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+        </script>
+    </body>
+</html>
