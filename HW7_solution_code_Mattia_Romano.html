@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Empirical vs Theoretical Distribution</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            canvas {
+                width: 600px!important;
+                height: auto;
+                margin: 20px auto;
+            }
+
+            .results {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            #meanVarianceDisplay {
+                font-size: 16px;
+                line-height: 1.8;
+                font-weight: bold;
+                margin-top: 20px;
+                text-align: center;
+                display: inline-block;
+                padding: 15px;
+                border: 2px solid #ddd;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+
+            .value-row {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 10px;
+            }
+
+            .value-item {
+                margin: 0 20px;
+            }
+
+            .probability{
+                margin: 10px 10px;
+            }
+
+            .probabilities-container {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            .probability-label {
+                display: inline-block;
+                width: 60px;
+                text-align: center;
+            }
+
+            .probability-input {
+                width: 60px;
+                margin: 5px;
+                text-align: center;
+            }
+
+            .label-container {
+                margin-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1 style="text-align: center;">Empirical Distribution Convergence</h1>
+
+        <div style="text-align: center;">
+            <!-- select the number of samples -->
+            <label for="sampleM">Samples (m):</label>
+            <input type="number" id="sampleM" value="1000" min="1" step="1"><br><br>
+                        
+            <!-- select the size of samples -->
+            <label for="sizeN">Size (n):</label>
+            <input type="number" id="sizeN" value="100" min="1" step="1"><br><br>
+
+            <!-- button to generate samples -->
+            <button id="generate">Generate Samples</button>
+        </div>
+
+        <!-- container for values of mean and variance-->
+        <div class="results">
+            <h3>Calculated Mean and Variance:</h3>
+            <div id="meanVarianceDisplay">
+                Theoretical and Empirical Mean and Variance will appear here.
+            </div>
+        </div>
+
+        <!-- container for graphs -->
+        <div class="results">
+            <!-- container for the charts -->
+            <canvas id="meansChart"></canvas>
+            <canvas id="varChart"></canvas>
+        </div>
+
+
+        <script>
+
+            // containers for canvas of distribution
+            meansGraph = null;
+            varGraph = null;
+
+            // create 2 lists to store means and variances
+            const means = [];   
+            const variances = [];
+
+            // Define values and probabilities array
+            let values = [0, 1, 2, 3, 4];
+            let probabilities = [0.2, 0.1, 0.3, 0.1, 0.3];
+            
+            // listener for the generate button
+            document.getElementById('generate').addEventListener('click', function() {
+
+                // get the values of m and n
+                const sizeN = parseInt(document.getElementById('sizeN').value);
+                const sampleM = parseInt(document.getElementById('sampleM').value);
+
+                // clear the arrays
+                means.length = 0;
+                variances.length = 0;
+
+                // generate samples
+                for(let i = 0; i < sampleM; i++){
+                    generateSamples(sizeN);
+                }
+
+                // calculate mean and variance
+                const empiricalMean = meanOfMeans();
+                const empiricalVariance = meanOfVariances();
+
+                // display mean and variance
+                displayMeanVariance(empiricalMean, empiricalVariance);
+                plotResults();
+
+            });
+
+
+            // function to generate samples
+            function generateSamples(sizeN) {
+                    
+                // arrays for samples and empirical counts
+                const samples = [];
+
+                // create values for mean and variance with Welford's algorithm
+                let mean = 0;
+                let M2 = 0; // For variance calculation using Welford's algorithm
+
+                // loop on the size of the simulation
+                for (let i = 0; i < sizeN; i++) {
+                    // Generate a random sample based on the defined probabilities
+                    const sample = drawSample();
+                    samples.push(sample);
+
+                    // Welford's algorithm for empirical mean and variance
+                    const delta = sample - mean;
+                    mean += delta / (i + 1);
+                    const delta2 = sample - mean;
+                    M2 += delta * delta2;
+                }
+
+                // calculate useful values for the chart
+                const empiricalVariance = M2 / sizeN;
+
+                // add the mean and variance to the arrays
+                means.push(mean);
+                variances.push(empiricalVariance);
+            }
+
+            // function to extract a sample
+            function drawSample() {
+                // take a random number
+                const rand = Math.random();
+
+                // calculate the value extracted using cumulative probabilities
+                let cumulativeProbability = 0;
+                for (let i = 0; i < probabilities.length; i++) {
+                    cumulativeProbability += probabilities[i];
+                    if (rand < cumulativeProbability) {
+                        return values[i];
+                    }
+                }
+
+                return values[values.length - 1];
+            }
+
+            // function that calculates the mean of means
+            function meanOfMeans() {
+                return means.reduce((sum, val) => sum + val, 0) / means.length;
+            }
+
+            // function that calculates the variance of variances
+            function meanOfVariances() {
+                return variances.reduce((sum, val) => sum + val, 0) / variances.length;
+            }
+
+            // function to display mean and variance
+            function displayMeanVariance(empiricalMean, empiricalVariance) {
+                    
+                // calculate theoretical mean and variance
+                const theoreticalMean = probabilities.reduce((sum, p, i) => sum + p * values[i], 0);
+                const theoreticalVariance = probabilities.reduce((sum, p, i) => sum + p * Math.pow(values[i] - theoreticalMean, 2), 0);
+                    
+                // display the result values
+                const meanVarianceDisplay = document.getElementById('meanVarianceDisplay');
+                meanVarianceDisplay.innerHTML = `
+                    <div class="value-row">
+                        <div class="value-item"><strong>Theoretical Mean:</strong> ${theoreticalMean.toFixed(2)}</div>
+                        <div class="value-item"><strong>Empirical Mean:</strong> ${empiricalMean.toFixed(2)}</div>
+                    </div>
+                    <div class="value-row">
+                        <div class="value-item"><strong>Theoretical Variance:</strong> ${theoreticalVariance.toFixed(2)}</div>
+                        <div class="value-item"><strong>Empirical Variance:</strong> ${empiricalVariance.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            // function to plot the results
+            function plotResults() {
+
+                // takes the context of graphs
+                const meanCtx = document.getElementById('meansChart').getContext('2d');
+                const varCtx = document.getElementById('varChart').getContext('2d');
+
+                // adjust the means array ordering the dataset and rounding up to 2 decimals
+                means.sort((a, b) => a - b);
+                means.forEach((mean, i) => {
+                    means[i] = mean.toFixed(2);
+                });
+
+                // adjust the variances array ordering the dataset and rounding up to 2 decimals
+                variances.sort((a, b) => a - b);
+                variances.forEach((variance, i) => {
+                    variances[i] = variance.toFixed(2);
+                });
+
+                // create the datasets for the graphs
+                const meanCounts = {};
+                const varianceCounts = {};
+
+                // count the number of times a mean or variance appears
+                means.forEach(mean => {
+                    meanCounts[mean] = (meanCounts[mean] || 0) + 1;
+                });
+
+                // count the number of times a mean or variance appears
+                variances.forEach(variance => {
+                    varianceCounts[variance] = (varianceCounts[variance] || 0) + 1;
+                });
+
+                // create the data for the means graphs
+                const meanData = {
+                    labels: Object.keys(meanCounts),
+                    datasets: [{
+                        label: 'Distribution of Means',
+                        data: Object.values(meanCounts),
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                };
+
+                // create the data for the variances graphs
+                const varianceData = {
+                    labels: Object.keys(varianceCounts),
+                    datasets: [{
+                        label: 'Distribution of Variances',
+                        data: Object.values(varianceCounts),
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                };
+
+                // MEANS GRAPH:
+                //      if the graph already exists, destroy it
+                if (meansGraph) {
+                    meansGraph.destroy();
+                }
+
+                //      create the graph
+                meansGraph = new Chart(meanCtx, {
+                    type: 'bar',
+                    data: meanData,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Mean Value'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+                // VARIANCES GRAPH:
+                //      if the graph already exists, destroy it
+                if (varGraph) {
+                    varGraph.destroy();
+                }
+
+                //      create the graph
+                varGraph = new Chart(varCtx, {
+                    type: 'bar',
+                    data: varianceData,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Variance Value'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+        </script>
+    </body>
+</html>
