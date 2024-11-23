@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Caesar Cipher vs RSA</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            canvas {
+                width: 600px !important;
+                height: auto;
+                margin: 20px auto;
+            }
+
+            .results {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            #meanVarianceDisplay {
+                font-size: 16px;
+                line-height: 1.8;
+                font-weight: bold;
+                margin-top: 20px;
+                text-align: center;
+                display: inline-block;
+                padding: 15px;
+                border: 2px solid #ddd;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+
+            .value-row {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 10px;
+            }
+
+            .value-item {
+                margin: 0 20px;
+            }
+
+            .probability {
+                margin: 10px 10px;
+            }
+
+            .probabilities-container {
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            .probability-label {
+                display: inline-block;
+                width: 60px;
+                text-align: center;
+            }
+
+            .probability-input {
+                width: 60px;
+                margin: 5px;
+                text-align: center;
+            }
+
+            .label-container {
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            textarea {
+                width: 80%;
+                margin: 10px auto;
+                display: block;
+                padding: 10px;
+                font-size: 16px;
+                box-sizing: border-box; /* Per includere padding e bordo nella larghezza */
+                resize: vertical; /* Permette di ridimensionare verticalmente */
+            }
+
+        </style>
+    </head>
+    <body>
+        <h1 style="text-align: center;">Caesar Cipher vs RSA</h1>
+
+        <!-- Plain Text -->
+        <div class="label-container">
+            <h3 for="textToEncrypt">Text to encrypt:</h3>
+            <textarea id="textToEncrypt" rows="4" maxlength="3000">In cryptography, a Caesar cipher, also known as Caesar's cipher, the shift cipher, Caesar's code, or Caesar shift, is one of the simplest and most widely known encryption techniques. It is a type of substitution cipher in which each letter in the plaintext is replaced by a letter some fixed number of positions down the alphabet. For example, with a left shift of 3, D would be replaced by A, E would become B, and so on. The method is named after Julius Caesar, who used it in his private correspondence.</textarea>
+
+            <!-- Key selection -->
+            <b><label for="key">Key (1-25):</label></b>
+            <input type="number" id="key" value="3" min="1" max="25">
+        </div>
+
+        <!-- risultati -->
+        <div class="results">
+            <!-- Encrypted Text -->
+            <h3>Encrypted text:</h3>
+            <textarea id="caesarEncryptedText" rows="4" maxlength="3000"></textarea>
+        
+            <!-- Histogram -->
+            <h3>Frequency:</h3>
+            <canvas id="caesarChart"></canvas>
+            <canvas id="standardChart"></canvas>
+
+            <!-- Decryption -->
+            <h3>Decrypted text:</h3>
+            <b><p id="frequencyDecryptedKey">Estimated Decrypted key: - </p></b>
+            <textarea id="frequencyDecryptedText" rows="4" maxlength="3000"></textarea>
+            <button onclick="attemptDecryption()">Attempt Frequency-Based Decryption</button><br>
+
+            <!-- shannon entropy -->
+            <b><p id="shannon"> Shannon Entropy: - </p></b>
+        </div>
+
+
+
+
+        <script>
+            // container for the charts.
+            let distro = null;
+            let stand = null;
+
+            // container for the letter counts.
+            let counts = null;
+
+            // English letter standard frequencies
+            let englishFrequencies = {
+                e: 12.02, t: 9.10, a: 8.12, o: 7.68, i: 7.31,
+                n: 6.95, s: 6.28, r: 6.02, h: 5.92, d: 4.32,
+                l: 3.98, u: 2.88, c: 2.71, m: 2.61, f: 2.30,
+                y: 2.11, w: 2.09, g: 2.03, p: 1.82, b: 1.49,
+                v: 1.11, k: 0.69, x: 0.17, q: 0.11, j: 0.10, z: 0.07
+            };
+
+            // function that applies caesar cipher to a text
+            function caesarEncrypt(input, shift) {
+                let result = '';
+
+                for (let ch of input) {
+                    if (ch >= 'A' && ch <= 'Z') {
+                        // Handle uppercase letters
+                        let offset = 'A'.charCodeAt(0);
+                        let shiftedChar = String.fromCharCode(((ch.charCodeAt(0) - offset + shift) % 26 + offset));
+                        result += shiftedChar;
+                    } else if (ch >= 'a' && ch <= 'z') {
+                        // Handle lowercase letters
+                        let offset = 'a'.charCodeAt(0);
+                        let shiftedChar = String.fromCharCode(((ch.charCodeAt(0) - offset + shift) % 26 + offset));
+                        result += shiftedChar;
+                    } else if (ch >= '0' && ch <= '9') {
+                        // Handle digits (0-9)
+                        let offset = '0'.charCodeAt(0);
+                        let shiftedChar = String.fromCharCode(((ch.charCodeAt(0) - offset + shift) % 10 + offset));
+                        result += shiftedChar;
+                    } else {
+                        // Non-letter characters are not shifted
+                        result += ch;
+                    }
+                }
+                return result;
+            }
+
+            // function that decrypts a text encrypted with caesar cipher
+            function caesarDecrypt(text, key) {
+                return caesarEncrypt(text, 26 - key);
+            }
+
+            // function that counts the frequency of each letter in a text
+            function countLetters(text) {
+                let total = 0;
+
+                // count the frequency of each letter in the text and the total lenght of the text
+                const counts = {};
+                for (const char of text.toLowerCase()) {
+                    if (char >= 'a' && char <= 'z') {
+                        counts[char] = (counts[char] || 0) + 1;
+                        total++;
+                    }
+                }
+
+                // convert the counts to percentages
+                for (const char in counts) {
+                    counts[char] = (counts[char] / total * 100).toFixed(2);
+                }
+
+                return counts;
+            }
+
+            // function that creates a chart with the frequency of the letters in the encrypted text
+            function createChart(data, standard) {
+                const ctx = document.getElementById('caesarChart').getContext('2d');
+                distro = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            label: 'Obtained Frequency',
+                            data: Object.values(data),
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Letters' }
+                            },
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // function that shows an histogram with the standard frequency of the letters in the English language
+            function standardChart(data) {
+                const ctx = document.getElementById('standardChart').getContext('2d');
+                stand = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            label: 'Standard Frequency',
+                            data: Object.values(data),
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Letters' }
+                            },
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // function that calculates the Shannon entropy of a distribution
+            function calculateEntropy(distribution) {
+                let entropy = 0;
+
+                for (const count of Object.values(distribution)) {
+                    if (count > 0) {
+                        const probability = count / 100;
+                        entropy -= probability * Math.log2(probability);
+                    }
+                }
+
+                return entropy;
+            }
+
+            // function that updates the page.
+            function updateText() {
+
+                // destroy the old graphs
+                if (distro) { distro.destroy(); }
+                if (stand) { stand.destroy(); }
+
+                // take HTML elements
+                const text = document.getElementById('textToEncrypt').value;
+                const key = parseInt(document.getElementById('key').value);
+
+                // encrypt the text and updates the page
+                const encryptedText = caesarEncrypt(text, key);
+                document.getElementById('caesarEncryptedText').textContent = encryptedText;
+
+                // count the frequency of the letters in the encrypted text
+                counts = countLetters(encryptedText);
+
+                // sort by values the counts
+                counts = Object.fromEntries(Object.entries(counts).sort(([, a], [, b]) => b - a));
+
+                // create the charts
+                createChart(counts, englishFrequencies);
+                standardChart(englishFrequencies);
+
+                // calculate the Shannon entropy of the distribution and updates the page
+                const entropy = calculateEntropy(counts);
+                document.getElementById('shannon').textContent = `Shannon Entropy of encrypted distribution: ${entropy.toFixed(2)}`;
+            }
+
+            // function that tries to decrypt the text using the frequency of the letters
+            function attemptDecryption() {
+
+                // try to guess the key based on the most common letter of the encrypted text
+                const encrypted = Object.keys(counts);
+                const standard = Object.keys(englishFrequencies);
+                const key = (encrypted[0].charCodeAt(0) - standard[0].charCodeAt(0) + 26) % 26;
+
+                // take the encrypted text from the page
+                const text = document.getElementById('caesarEncryptedText').textContent;
+
+                // decrypt the text and updates the page
+                const decryptedText = caesarDecrypt(text, key);
+
+                document.getElementById('frequencyDecryptedKey').textContent = `Estimated Decrypted key: ${key}`;
+                document.getElementById('frequencyDecryptedText').textContent = `${decryptedText}`;
+            }
+
+
+            document.getElementById('textToEncrypt').addEventListener('input', updateText);
+            document.getElementById('key').addEventListener('input', updateText);
+
+            updateText();
+
+        </script>
+    </body>
+</html>
